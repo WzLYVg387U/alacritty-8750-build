@@ -1,0 +1,48 @@
+name: build-alacritty-8750
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Alacritty PR 8750 head
+        uses: actions/checkout@v4
+        with:
+          repository: alacritty/alacritty
+          ref: 50d6942d3f05e1f05428b0e6938b1815efd984e6
+          fetch-depth: 1
+
+      - name: Show commit and winit version
+        run: |
+          git rev-parse HEAD
+          awk '/^name = "winit"/{f=1} f && /^version/{print; exit}' Cargo.lock
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake pkg-config python3 \
+            libfreetype6-dev libfontconfig1-dev \
+            libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libx11-dev libxi-dev \
+            libxcursor-dev libxrandr-dev libxinerama-dev
+
+      - name: Build release
+        run: cargo build --release --locked
+
+      - name: Verify binary
+        run: |
+          file target/release/alacritty
+          target/release/alacritty --version
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: alacritty-8750-linux-x86_64
+          path: target/release/alacritty
+          if-no-files-found: error
